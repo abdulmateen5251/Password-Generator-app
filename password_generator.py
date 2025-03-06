@@ -1,7 +1,6 @@
 import streamlit as st
 import random 
 import string
-import pyperclip
 import json
 import os
 from datetime import datetime
@@ -154,6 +153,9 @@ st.markdown("""
         font-size: 1.8rem !important;
         font-weight: 600 !important;
     }
+    .stButton>button {
+        width: 100%;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -169,6 +171,8 @@ if 'saved_passwords' not in st.session_state:
             st.session_state.saved_passwords = []
     else:
         st.session_state.saved_passwords = []
+if 'copy_success' not in st.session_state:
+    st.session_state.copy_success = False
 
 # Create sidebar for saved passwords
 with st.sidebar:
@@ -191,11 +195,12 @@ with st.sidebar:
         for idx, pwd in enumerate(st.session_state.saved_passwords):
             with st.expander(f"🔐 {pwd['label']} ({pwd['created_at']})"):
                 st.text_input(f"🔒 Password", value=pwd['password'], type="password", key=f"saved_pwd_{idx}")
+                
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("📋 Copy", key=f"copy_btn_{idx}", use_container_width=True):
-                        pyperclip.copy(pwd['password'])
-                        st.success("✅ Copied!")
+                    # Instead of copying directly, show the password in a way user can select it
+                    if st.button("📋 Show to Copy", key=f"copy_btn_{idx}", use_container_width=True):
+                        st.session_state[f"show_to_copy_{idx}"] = True
                 with col2:
                     if st.button("👁️ Show/Hide", key=f"show_btn_{idx}", use_container_width=True):
                         if f"show_pwd_{idx}" not in st.session_state:
@@ -203,6 +208,12 @@ with st.sidebar:
                         else:
                             st.session_state[f"show_pwd_{idx}"] = not st.session_state[f"show_pwd_{idx}"]
                 
+                # Show for copying
+                if f"show_to_copy_{idx}" in st.session_state and st.session_state[f"show_to_copy_{idx}"]:
+                    st.text_area("Select and copy this password:", value=pwd['password'], key=f"copy_area_{idx}", height=80)
+                    st.info("👆 Select the password above and press Ctrl+C (Cmd+C on Mac) to copy")
+                
+                # Show for viewing
                 if f"show_pwd_{idx}" in st.session_state and st.session_state[f"show_pwd_{idx}"]:
                     st.code(pwd['password'])
     else:
@@ -279,9 +290,8 @@ if st.session_state.password:
     col_copy, col_another = st.columns(2)
     
     with col_copy:
-        if st.button("📋 Copy to Clipboard", use_container_width=True):
-            pyperclip.copy(st.session_state.password)
-            st.success("✅ Password copied to clipboard!")
+        if st.button("📋 Show to Copy", use_container_width=True):
+            st.session_state.show_main_copy = True
     
     with col_another:
         if st.button("🔄 Generate Another", use_container_width=True):
@@ -291,6 +301,11 @@ if st.session_state.password:
             else:
                 st.session_state.password = suggest_strong_password()
                 st.rerun()
+    
+    # Show password for copying
+    if 'show_main_copy' in st.session_state and st.session_state.show_main_copy:
+        st.text_area("Select and copy this password:", value=st.session_state.password, height=80)
+        st.info("👆 Select the password above and press Ctrl+C (Cmd+C on Mac) to copy")
         
     # Encourage saving
     st.info("👈 Use the sidebar to save this password")
